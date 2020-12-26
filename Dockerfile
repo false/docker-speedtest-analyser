@@ -3,6 +3,9 @@ FROM alpine:3.9
 # greet me :)
 MAINTAINER Tobias Rös - <roes@amicaldo.de>
 
+ARG VERSION=1.0.0
+ENV SPEEDTEST_VERSION=${VERSION}
+
 # install dependencies
 RUN apk update && apk add \
   bash \
@@ -46,3 +49,22 @@ RUN chown -R nginx:nginx /var/www/html/
 RUN chmod +x /var/www/html/config/run.sh
 RUN chmod 755 /var/www/html/scripts/speedtestRunner.py
 ENTRYPOINT ["/var/www/html/config/run.sh"]
+
+#speedtest ookla
+RUN apk add --no-cache --virtual deps tar curl && \
+    ARCH=$(apk info --print-arch) && \
+    echo ARCH=$ARCH && \
+    case "$ARCH" in \
+      x86) _arch=i386 ;; \
+      armv7) _arch=armhf ;; \
+      *) _arch="$ARCH" ;; \
+    esac && \
+    echo https://bintray.com/ookla/download/download_file?file_path=ookla-speedtest-${VERSION}-${_arch}-linux.tgz && \
+    curl -fsSL -o /tmp/ookla-speedtest.tgz \
+      https://bintray.com/ookla/download/download_file?file_path=ookla-speedtest-${VERSION}-${_arch}-linux.tgz && \
+    tar xvfz /tmp/ookla-speedtest.tgz -C /usr/local/bin speedtest && \
+    rm -rf /tmp/ookla-speedtest.tgz && \
+    adduser -D speedtest && \
+    su speedtest -c "speedtest --accept-license --accept-gdpr" && \
+    apk del deps
+
